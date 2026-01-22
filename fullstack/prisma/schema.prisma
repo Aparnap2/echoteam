@@ -1,0 +1,121 @@
+// Prisma schema for EchoTeam
+// Multi-tenant architecture with tenantId for isolation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Multi-tenant User model
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String   // Multi-tenant namespace
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  clones    Clone[]
+  actions   Action[]
+  integrations Integration[]
+
+  @@index([tenantId])
+  @@unique([email, tenantId])
+}
+
+// Clone configurations
+model Clone {
+  id          String     @id @default(cuid())
+  userId      String
+  tenantId    String
+  type        CloneType  // calendar, email, ops
+  name        String
+  config      Json       // Clone-specific settings
+  enabled     Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+}
+
+enum CloneType {
+  CALENDAR
+  EMAIL
+  OPS
+}
+
+// Action log for HITL (Human-in-the-Loop)
+model Action {
+  id            String        @id @default(cuid())
+  userId        String
+  tenantId      String
+  cloneId       String?
+  type          String
+  status        ActionStatus
+  payload       Json
+  result        Json?
+  confidence    Float?
+  requiresApproval Boolean    @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([status])
+}
+
+enum ActionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+  FAILED
+}
+
+// OAuth integrations
+model Integration {
+  id            String   @id @default(cuid())
+  userId        String
+  tenantId      String
+  provider      String   // google, github, etc.
+  accessToken   String
+  refreshToken  String?
+  expiresAt     DateTime?
+  scope         String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@index([tenantId])
+}
+
+// Audit log for tracking all actions
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String
+  action      String
+  resource    String?
+  resourceId  String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([createdAt])
+}

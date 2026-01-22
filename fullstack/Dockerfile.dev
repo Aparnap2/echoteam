@@ -1,0 +1,19 @@
+# Dockerfile for Development (with hot reload)
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Expose ports
+EXPOSE 5173 3001
+
+# Start both frontend and backend
+CMD ["sh", "-c", "pnpm dev"]

@@ -1,0 +1,123 @@
+# Docker Compose for EchoTeam Local Development
+# Services: PostgreSQL, FalkorDB, Ollama, AI Service, API
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: echoteam-postgres
+    environment:
+      POSTGRES_USER: echoteam
+      POSTGRES_PASSWORD: echoteam_dev
+      POSTGRES_DB: echoteam
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U echoteam -d echoteam"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FalkorDB (Graph Database)
+  falkordb:
+    image: falkordb/falkordb:latest
+    container_name: echoteam-falkordb
+    ports:
+      - "6379:6379"  # Redis protocol
+      - "3000:3000"  # GraphiQL UI
+    volumes:
+      - falkordb_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Ollama (Local LLM)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: echoteam-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_NUM_PARALLEL=2
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/version"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # AI Service (FastAPI)
+  ai-service:
+    build:
+      context: ./apps/ai-service
+      dockerfile: Dockerfile
+    container_name: echoteam-ai-service
+    ports:
+      - "8000:8000"
+    environment:
+      - FALKOR_HOST=falkordb
+      - FALKOR_PORT=6379
+      - OLLAMA_BASE_URL=http://ollama:11434
+    depends_on:
+      falkordb:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Server (Hono + tRPC)
+  api:
+    build:
+      context: ./fullstack
+      dockerfile: Dockerfile
+    container_name: echoteam-api
+    ports:
+      - "3001:3001"
+    environment:
+      - DATABASE_URL=postgresql://echoteam:echoteam_dev@postgres:5432/echoteam
+      - AI_SERVICE_URL=http://ai-service:8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Frontend (Development)
+  frontend:
+    build:
+      context: ./fullstack
+      dockerfile: Dockerfile.dev
+    container_name: echoteam-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_URL=http://localhost:3001
+    volumes:
+      - ./fullstack:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  falkordb_data:
+  ollama_data:
+
+networks:
+  default:
+    name: echoteam-network
