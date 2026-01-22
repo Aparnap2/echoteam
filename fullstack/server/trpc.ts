@@ -32,3 +32,6 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
     },
   });
 });
+
+// Demo procedure - allows unauthenticated access for demo mode
+export const demoProcedure = t.procedure;

@@ -1,13 +1,13 @@
 // User router for user profile and settings
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, demoProcedure } from "../trpc";
 
 export const userRouter = router({
   // Get current user profile
-  getProfile: protectedProcedure.query(async ({ ctx }) => {
+  getProfile: demoProcedure.query(async ({ ctx }) => {
     return {
-      id: ctx.user.id,
-      email: ctx.user.email,
+      id: ctx.user?.id || "demo-user",
+      email: ctx.user?.email || "demo@example.com",
       name: "Demo User",
       image: null,
       createdAt: new Date().toISOString(),
@@ -15,7 +15,7 @@ export const userRouter = router({
   }),
 
   // Update user profile
-  updateProfile: protectedProcedure
+  updateProfile: demoProcedure
     .input(
       z.object({
         name: z.string().min(1).max(100).optional(),
@@ -33,7 +33,7 @@ export const userRouter = router({
     }),
 
   // Get user settings
-  getSettings: protectedProcedure.query(async () => {
+  getSettings: demoProcedure.query(async () => {
     return {
       theme: "dark",
       notifications: {
@@ -50,7 +50,7 @@ export const userRouter = router({
   }),
 
   // Update user settings
-  updateSettings: protectedProcedure
+  updateSettings: demoProcedure
     .input(
       z.object({
         theme: z.enum(["light", "dark"]).optional(),

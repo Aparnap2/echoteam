@@ -28,15 +28,29 @@ EchoTeam is an AI-powered clone workforce that eliminates context rot for solopr
 ┌────────────────────────┴────────────────────────────────────────┐
 │              AI Service (FastAPI + LangGraph)                    │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │                    LangGraph Supervisor                  │    │
-│  │  ┌───────────┐ ┌───────────┐ ┌───────────┐ ┌────────┐ │    │
-│  │  │ Admin     │ │ Ops       │ │ Research  │ │ Planner│ │    │
-│  │  │ Clone     │ │ Clone     │ │ Clone     │ │        │ │    │
-│  │  └─────┬─────┘ └─────┬─────┘ └─────┬─────┘ └────────┘ │    │
-│  └────────┼──────────────┼──────────────┼─────────────────┘    │
-└───────────┼──────────────┼──────────────┼──────────────────────┘
-            │              │              │
-            └──────────────┼──────────────┘
+│  │              StateGraph (Supervisor Pattern)             │    │
+│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │    │
+│  │  │  START      │───►│ Supervisor  │───►│   END       │ │    │
+│  │  │             │    │   Router    │    │             │ │    │
+│  │  └─────────────┘    └──────┬──────┘    └─────────────┘ │    │
+│  │                            │                            │    │
+│  │         ┌──────────────────┼──────────────────┐         │    │
+│  │         ▼                  ▼                  ▼         │    │
+│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │    │
+│  │  │ Admin Clone │    │ Ops Clone   │    │Research Clone│ │    │
+│  │  │ (Email/Cal) │    │ (Tasks/Org) │    │(Research)   │ │    │
+│  │  └──────┬──────┘    └──────┬──────┘    └──────┬──────┘ │    │
+│  │         │                  │                  │        │    │
+│  │         └──────────────────┼──────────────────┘        │    │
+│  │                            │                            │    │
+│  │         ┌──────────────────┼──────────────────┐         │    │
+│  │         ▼                  ▼                  ▼         │    │
+│  │  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐ │    │
+│  │  │  Planning   │    │    HITL     │    │  Task       │ │    │
+│  │  │   Node      │    │  Approval   │    │  Complete   │ │    │
+│  │  └─────────────┘    └─────────────┘    └─────────────┘ │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
                            │
 ┌──────────────────────────┴──────────────────────────────────────┐
 │                   Data Layer (PostgreSQL + FalkorDB)              │
@@ -87,17 +101,17 @@ echoteam/
 ├── apps/
 │   └── ai-service/                   # Python AI service
 │       ├── app/
-│       │   ├── agents/               # Clone implementations
-│       │   │   ├── admin_clone.py
-│       │   │   ├── ops_clone.py
-│       │   │   └── research_clone.py
-│       │   ├── graphiti/             # Graphiti client
+│       │   ├── agents/               # LangGraph multi-agent system
+│       │   │   ├── base.py           # BaseCloneAgent, CloneType, ActionStatus
+│       │   │   └── supervisor.py     # LangGraph StateGraph with 3 clones
+│       │   ├── graphiti/             # Graphiti + FalkorDB client
+│       │   │   └── client.py         # Episode ingestion, temporal queries
 │       │   ├── llm/                  # LLM wrappers (Ollama)
 │       │   ├── main.py               # FastAPI app
 │       │   └── settings.py           # Configuration
 │       ├── tests/                    # Unit tests
-│       │   ├── test_agents.py
-│       │   └── test_ingestion.py
+│       │   ├── test_graphiti.py      # Graphiti client tests (14 tests)
+│       │   └── test_supervisor.py    # Supervisor tests (28 tests)
 │       ├── pyproject.toml
 │       └── requirements.txt
 ├── fullstack/                        # React + Hono fullstack
@@ -201,10 +215,16 @@ uv run pytest tests/ -v --tb=short
 
 **Results:**
 ```
-tests/test_agents.py ............... [17 passed]
-tests/test_ingestion.py ........... [15 passed]
-=================================== 34 passed in 5.23s ===
+tests/test_graphiti.py ............ [14 passed]
+tests/test_supervisor.py .......... [28 passed]
+=================================== 68 passed in 0.68s ===
 ```
+
+**Test Coverage:**
+- Graphiti client: Episode ingestion, temporal queries, multi-tenant isolation
+- LangGraph supervisor: AgentState, routing logic, clone nodes, multi-agent handoffs
+- Planning loops: Proactive suggestions based on time and context
+- HITL: Human-in-the-loop approval checkpoints
 
 ### E2E Tests (Playwright + Chrome MCP)
 ```bash
@@ -305,9 +325,19 @@ This is a **portfolio project** demonstrating:
 
 ### Key Patterns Demonstrated
 1. **tRPC end-to-end type safety** between React and Hono
-2. **LangGraph supervisor pattern** for multi-agent orchestration
-3. **Temporal knowledge graphs** for persistent context
+2. **LangGraph StateGraph with supervisor pattern** for multi-agent orchestration
+   - AgentState TypedDict for shared state across all nodes
+   - 3 clone nodes: Admin (email/calendar), Ops (tasks/org), Research
+   - Multi-agent handoffs via conditional routing
+   - Planning loops for proactive suggestions
+3. **Temporal knowledge graphs** (Graphiti/FalkorDB) for persistent context
+   - Episode ingestion with entity extraction
+   - Temporal queries for time-aware context retrieval
+   - Multi-tenant isolation via group IDs
 4. **HITL boundaries** for safe autonomous actions
+   - Confidence-based approval thresholds (85%)
+   - Action-type approval (email drafts, calendar scheduling)
+   - Interrupt-based checkpoints with human feedback
 5. **JWT auth** with protected procedures
 
 ## License

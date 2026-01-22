@@ -1,6 +1,5 @@
 // React Query, tRPC, and Auth providers
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink } from "@trpc/client";
 import { useState } from "react";
 import { trpc, trpcClientConfig } from "./trpc";
 import { AuthProvider } from "./auth.tsx";
