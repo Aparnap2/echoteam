@@ -34,7 +34,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated, Optional, Union
 from enum import Enum
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing_extensions import TypedDict
 
 from langgraph.graph import StateGraph, START, END
@@ -569,7 +569,7 @@ def execute_approved(state: AgentState) -> dict:
     # Mark as approved and completed
     return {
         "tasks": [
-            t if (t.id != task.id) else {**t, "status": TaskStatus.APPROVED}
+            t if (t.id != task.id) else replace(t, status=TaskStatus.APPROVED)
             for t in state.get("tasks", [])
         ],
         "completed_actions": [
@@ -600,7 +600,7 @@ def task_complete(state: AgentState) -> dict:
 
     return {
         "tasks": [
-            t if (t.id != task.id) else {**t, "status": TaskStatus.COMPLETED}
+            t if (t.id != task.id) else replace(t, status=TaskStatus.COMPLETED)
             for t in state.get("tasks", [])
         ],
         "completed_actions": [
@@ -661,6 +661,7 @@ def create_supervisor_graph() -> StateGraph:
             "research_clone": "research_clone",
             "planning": "planning",
             "task_complete": "task_complete",
+            "execute_approved": "execute_approved",
         }
     )
 
@@ -677,6 +678,7 @@ def create_supervisor_graph() -> StateGraph:
             "human_approval": "human_approval",
             "ops_clone": "ops_clone",
             "task_complete": "task_complete",
+            "END": END,
         }
     )
 
@@ -809,7 +811,7 @@ async def research_query(
         task_type=TaskType.RESEARCH_QUERY,
         description=query,
         payload={"query": query},
-        assignee=CloneType.OPS,
+        assignee=CloneType.RESEARCH,
     )
 
     return await run_supervisor(user_id, task)

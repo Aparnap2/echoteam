@@ -6,11 +6,11 @@ import {
   useApproveAction,
   useRejectAction,
   useActionStats,
+  type CloneType,
 } from "./lib/hooks";
 import { useAuth } from "./lib/auth.tsx";
 
 type View = "dashboard" | "clones" | "actions" | "analytics" | "settings" | "onboarding" | "context";
-type CloneType = "calendar" | "email" | "ops" | "research";
 
 // Icons as SVG components
 const Icons = {
@@ -80,10 +80,9 @@ interface CloneCardProps {
 function CloneCard({ type, name, enabled, description }: CloneCardProps) {
   const getIcon = () => {
     switch (type) {
-      case "calendar": return Icons.Calendar;
-      case "email": return Icons.Email;
-      case "ops": return Icons.Ops;
-      case "research": return Icons.Research;
+      case "CALENDAR": return Icons.Calendar;
+      case "EMAIL": return Icons.Email;
+      case "OPS": return Icons.Ops;
       default: return Icons.Clones;
     }
   };
@@ -241,7 +240,7 @@ function DashboardView() {
             {(clones || []).map((clone) => (
               <CloneCard
                 key={clone.id}
-                type={clone.type.toLowerCase() as CloneType}
+                type={clone.type as CloneType}
                 name={clone.name}
                 enabled={clone.enabled}
                 description={
@@ -251,8 +250,6 @@ function DashboardView() {
                     ? "Reads, drafts, and sends emails"
                     : clone.type === "OPS"
                     ? "Manages tasks and workflows"
-                    : clone.type === "RESEARCH"
-                    ? "Researches topics and detects patterns"
                     : "EchoTeam clone"
                 }
               />
@@ -335,7 +332,7 @@ function ClonesView() {
             {(clones || []).map((clone) => (
               <CloneCard
                 key={clone.id}
-                type={clone.type.toLowerCase() as CloneType}
+                type={clone.type as CloneType}
                 name={clone.name}
                 enabled={clone.enabled}
                 description={getCloneDescription(clone.type)}
@@ -483,7 +480,7 @@ function PatternAlertsPanel() {
       type: "pattern",
       title: "Email Response Time Improving",
       description: "Your response time decreased by 23% this week compared to last month.",
-      clone: "email",
+      clone: "EMAIL",
       timestamp: new Date().toISOString(),
       read: false,
     },
@@ -492,7 +489,7 @@ function PatternAlertsPanel() {
       type: "opportunity",
       title: "Similar to Q4 Success",
       description: "This project pattern matches your successful Q4 launch — suggest proactive stakeholder update?",
-      clone: "research",
+      clone: "OPS",
       timestamp: new Date(Date.now() - 3600000).toISOString(),
       read: false,
     },
@@ -501,7 +498,7 @@ function PatternAlertsPanel() {
       type: "risk",
       title: "Task Overdue Alert",
       description: "3 tasks are pending beyond their due dates — recommend follow-up?",
-      clone: "ops",
+      clone: "OPS",
       timestamp: new Date(Date.now() - 7200000).toISOString(),
       read: true,
     },
@@ -625,7 +622,7 @@ function ActivityLog() {
   const [activities] = useState<ActivityLogEntry[]>([
     {
       id: "1",
-      clone: "email",
+      clone: "EMAIL",
       action: "Drafted reply to client inquiry",
       status: "approved",
       timestamp: new Date(Date.now() - 1800000).toISOString(),
@@ -633,14 +630,14 @@ function ActivityLog() {
     },
     {
       id: "2",
-      clone: "ops",
+      clone: "OPS",
       action: "Created task: Follow up on proposal",
       status: "completed",
       timestamp: new Date(Date.now() - 3600000).toISOString(),
     },
     {
       id: "3",
-      clone: "research",
+      clone: "OPS",
       action: "Analyzed competitor launch",
       status: "completed",
       timestamp: new Date(Date.now() - 7200000).toISOString(),
@@ -648,7 +645,7 @@ function ActivityLog() {
     },
     {
       id: "4",
-      clone: "calendar",
+      clone: "CALENDAR",
       action: "Suggested focus time block",
       status: "pending",
       timestamp: new Date(Date.now() - 10800000).toISOString(),
@@ -675,10 +672,9 @@ function ActivityLog() {
         {activities.map(entry => (
           <div key={entry.id} className="activity-item">
             <div className="activity-icon">
-              {entry.clone === "email" && <Icons.Email />}
-              {entry.clone === "ops" && <Icons.Ops />}
-              {entry.clone === "research" && <Icons.Research />}
-              {entry.clone === "calendar" && <Icons.Calendar />}
+              {entry.clone === "EMAIL" && <Icons.Email />}
+              {entry.clone === "OPS" && <Icons.Ops />}
+              {entry.clone === "CALENDAR" && <Icons.Calendar />}
             </div>
             <div className="activity-content">
               <span className="activity-action">{entry.action}</span>
@@ -701,11 +697,10 @@ function QuickActions() {
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const quickActions = [
-    { id: "email", label: "Compose Email", icon: Icons.Email, clone: "email" },
-    { id: "task", label: "Create Task", icon: Icons.Ops, clone: "ops" },
-    { id: "research", label: "Quick Research", icon: Icons.Research, clone: "research" },
-    { id: "schedule", label: "Schedule Meeting", icon: Icons.Calendar, clone: "calendar" },
-    { id: "digest", label: "Generate Daily Digest", icon: Icons.Zap, clone: "admin" },
+    { id: "email", label: "Compose Email", icon: Icons.Email, clone: "EMAIL" as CloneType },
+    { id: "task", label: "Create Task", icon: Icons.Ops, clone: "OPS" as CloneType },
+    { id: "schedule", label: "Schedule Meeting", icon: Icons.Calendar, clone: "CALENDAR" as CloneType },
+    { id: "digest", label: "Generate Daily Digest", icon: Icons.Zap, clone: "OPS" as CloneType },
   ];
 
   const handleQuickAction = async (actionId: string) => {

@@ -212,7 +212,7 @@ class GraphitiClient:
             )
 
         except Exception as e:
-            logger.error(f"Failed to add episode: {e}")
+            logger.exception("Failed to add episode")
             raise
 
     async def search(

@@ -144,6 +144,15 @@ Attendees: {attendees or 'None'}
 
             if success:
                 result.episodes_created += 1
+                # Populate cache for get_upcoming_events
+                self._events_cache.append({
+                    "id": event["id"],
+                    "summary": event["summary"],
+                    "start": event["start"],
+                    "end": event["end"],
+                    "attendees": event.get("attendees", []),
+                    "location": event.get("location"),
+                })
             else:
                 result.errors.append(f"Failed to create episode for {event['id']}")
 

@@ -33,5 +33,28 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   });
 });
 
-// Demo procedure - allows unauthenticated access for demo mode
-export const demoProcedure = t.procedure;
+// Demo procedure - allows unauthenticated access for demo mode only
+// In production, this should be disabled or strictly controlled
+export const demoProcedure = t.procedure.use(async ({ ctx, next }) => {
+  // Check if demo mode is enabled (use Vite env vars)
+  const demoMode = import.meta.env?.DEV || import.meta.env?.VITE_DEMO_MODE === "true";
+
+  if (!demoMode && !ctx.user) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Demo mode is disabled. Please authenticate.",
+    });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      // Provide a demo user for unauthenticated access in demo mode
+      user: ctx.user || {
+        id: "demo-user",
+        email: "demo@example.com",
+        name: "Demo User",
+      },
+    },
+  });
+});

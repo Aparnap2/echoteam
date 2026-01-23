@@ -42,6 +42,7 @@ class Scheduler:
         self._tasks: Dict[str, ScheduledTask] = {}
         self._running = False
         self._task_results: Dict[str, Any] = {}
+        self._loop_task: Optional[asyncio.Task] = None
 
     def add_task(self, task: ScheduledTask) -> None:
         """Add a scheduled task."""
@@ -62,13 +63,28 @@ class Scheduler:
         self._running = True
         logger.info(f"Scheduler: Started for user {self.user_id}")
 
-        # Start the main loop
-        asyncio.create_task(self._run_loop())
+        # Start the main loop and store task reference for exception handling
+        self._loop_task = asyncio.create_task(self._run_loop())
+        self._loop_task.add_done_callback(self._handle_loop_done)
 
     async def stop(self) -> None:
         """Stop the scheduler."""
         self._running = False
+        if self._loop_task:
+            self._loop_task.cancel()
         logger.info("Scheduler: Stopped")
+
+    def _handle_loop_done(self, future: asyncio.Future) -> None:
+        """Handle loop task completion (including exceptions)."""
+        try:
+            if future.done() and not future.cancelled():
+                exception = future.exception()
+                if exception:
+                    logger.error(f"Scheduler loop failed: {exception}", exc_info=True)
+        except asyncio.CancelledError:
+            pass  # Normal shutdown
+        except Exception as e:
+            logger.error(f"Error handling loop done: {e}")
 
     async def _run_loop(self) -> None:
         """Main scheduler loop - checks tasks every minute."""
@@ -94,20 +110,76 @@ class Scheduler:
 
         # Simplified cron-like scheduling
         # Format: "minute hour day month" (all optional)
+        # Supports step syntax: "*/4" means "every 4 units"
         parts = task.cron_expression.split()
         while len(parts) < 4:
             parts.append("*")
 
         minute, hour, day, month = parts
 
-        if minute != "*" and now.minute != int(minute):
-            return False
-        if hour != "*" and now.hour != int(hour):
-            return False
-        if day != "*" and now.day != int(day):
-            return False
-        if month != "*" and now.month != int(month):
-            return False
+        # Check minute (supports */n syntax)
+        if minute != "*":
+            if minute.startswith("*/"):
+                try:
+                    step = int(minute[2:])
+                    if step <= 0 or now.minute % step != 0:
+                        return False
+                except ValueError:
+                    return False
+            else:
+                try:
+                    if now.minute != int(minute):
+                        return False
+                except ValueError:
+                    return False
+
+        # Check hour (supports */n syntax)
+        if hour != "*":
+            if hour.startswith("*/"):
+                try:
+                    step = int(hour[2:])
+                    if step <= 0 or now.hour % step != 0:
+                        return False
+                except ValueError:
+                    return False
+            else:
+                try:
+                    if now.hour != int(hour):
+                        return False
+                except ValueError:
+                    return False
+
+        # Check day (supports */n syntax)
+        if day != "*":
+            if day.startswith("*/"):
+                try:
+                    step = int(day[2:])
+                    if step <= 0 or now.day % step != 0:
+                        return False
+                except ValueError:
+                    return False
+            else:
+                try:
+                    if now.day != int(day):
+                        return False
+                except ValueError:
+                    return False
+
+        # Check month (supports */n syntax)
+        if month != "*":
+            if month.startswith("*/"):
+                try:
+                    step = int(month[2:])
+                    if step <= 0 or now.month % step != 0:
+                        return False
+                except ValueError:
+                    return False
+            else:
+                try:
+                    if now.month != int(month):
+                        return False
+                except ValueError:
+                    return False
 
         return True
 
