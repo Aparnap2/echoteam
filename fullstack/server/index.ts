@@ -36,8 +36,12 @@ app.use(
   "/trpc/*",
   trpcServer({
     router: appRouter,
-    createContext: async (c) => {
-      const authHeader = c.req.header("Authorization");
+    createContext: async (opts) => {
+      // @hono/trpc-server passes headers directly in opts
+      const authHeader = opts.event?.req?.headers?.get?.("authorization") ||
+                         opts.event?.req?.headers?.authorization ||
+                         opts.headers?.get?.("authorization") ||
+                         opts.headers?.authorization;
       let user = null;
 
       if (authHeader?.startsWith("Bearer ")) {
@@ -46,7 +50,6 @@ app.use(
       }
 
       return {
-        ...createContext(),
         user,
       };
     },

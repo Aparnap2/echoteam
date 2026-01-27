@@ -1,5 +1,24 @@
 """Pytest configuration and fixtures for AI service tests."""
 
+# Set environment variables BEFORE any imports that use Graphiti
+import os
+
+# Neo4j configuration
+os.environ["NEO4J_URI"] = "bolt://localhost:7687"
+os.environ["NEO4J_USER"] = "neo4j"
+os.environ["NEO4J_PASSWORD"] = "echoteam123"
+
+# LLM configuration for Ollama
+os.environ["LLM_PROVIDER"] = "ollama"
+os.environ["LLM_MODEL"] = "granite3.1-moe:3b"
+os.environ["LLM_ENDPOINT"] = "http://localhost:11434"
+os.environ["LLM_API_KEY"] = "ollama"
+
+# Embedding configuration for Ollama
+os.environ["EMBEDDING_MODEL"] = "nomic-embed-text:v1.5"
+os.environ["EMBEDDING_ENDPOINT"] = "http://localhost:11434/api/embed"
+os.environ["EMBEDDING_DIMENSIONS"] = "768"
+
 import pytest
 import asyncio
 from typing import AsyncGenerator, Generator
@@ -15,41 +34,14 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 
 
 @pytest.fixture
-def mock_ollama_client():
-    """Mock Ollama client for testing."""
-    mock = MagicMock()
-    mock.generate = AsyncMock(returned_value={
-        "model": "qwen2.5-coder:3b",
-        "response": "Test response",
-        "done": True
-    })
-    mock.embed = AsyncMock(return_value={
-        "model": "nomic-embed-text:v1.5",
-        "embeddings": [[0.1, 0.2, 0.3]],
-        "done": True
-    })
-    return mock
-
-
-@pytest.fixture
-def mock_falkordb_client():
-    """Mock FalkorDB client for testing."""
-    mock = MagicMock()
-    mock.connect = MagicMock()
-    mock.query = AsyncMock(return_value=[])
-    mock.close = MagicMock()
-    return mock
-
-
-@pytest.fixture
-def mock_graphiti_client(mock_falkordb_client):
+def mock_graphiti_client():
     """Mock Graphiti client for testing."""
     mock = MagicMock()
     mock.initialize = AsyncMock()
     mock.close = AsyncMock()
     mock.add_episode = AsyncMock(return_value="episode_123")
     mock.search = AsyncMock(return_value=[
-        {"content": "Test result", "score": 0.9}
+        {"content": "Test result", "score": 0.9, "metadata": {}}
     ])
     return mock
 

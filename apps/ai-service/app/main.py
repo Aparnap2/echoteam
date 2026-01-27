@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import httpx
 from app.config import settings
-from app.graphiti.client import GraphitiClient
+from app.graphiti.client import GraphitiClient, EpisodeSource
 from app.agents import CalendarClone, EmailClone, OpsClone, CloneType
 
 
@@ -282,13 +282,34 @@ async def search_memory(query: str, num_results: int = 5):
 
 
 @app.post("/api/memory/episode")
-async def add_episode(name: str, facts: list[str], source: str = "echo_team"):
+async def add_episode(
+    name: str,
+    content: str,
+    source: str = "echo_team",
+    group_id: str = "default",
+):
     """Add an episode to the temporal knowledge graph."""
     if not graphiti_client:
         raise HTTPException(status_code=503, detail="Graphiti client not initialized")
 
-    episode_id = await graphiti_client.add_episode(name, facts, source)
-    return {"episode_id": episode_id}
+    # Convert source string to EpisodeSource enum
+    source_enum_map = {
+        "email": EpisodeSource.EMAIL,
+        "calendar": EpisodeSource.CALENDAR,
+        "task": EpisodeSource.TASK,
+        "note": EpisodeSource.NOTE,
+        "research": EpisodeSource.RESEARCH,
+        "echo_team": EpisodeSource.USER_INTERACTION,
+    }
+    source_enum = source_enum_map.get(source.lower(), EpisodeSource.USER_INTERACTION)
+
+    episode = await graphiti_client.add_episode(
+        name=name,
+        content=content,
+        source=source_enum,
+        group_id=group_id,
+    )
+    return {"episode_id": episode.id}
 
 
 if __name__ == "__main__":

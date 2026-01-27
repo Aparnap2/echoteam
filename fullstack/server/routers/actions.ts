@@ -1,6 +1,6 @@
 // Action router for HITL (Human-in-the-Loop) management
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, demoProcedure } from "../trpc";
 
 const actionStatusEnum = z.enum([
   "PENDING",
@@ -12,7 +12,7 @@ const actionStatusEnum = z.enum([
 
 export const actionsRouter = router({
   // Get all actions for user (with filtering)
-  getAll: protectedProcedure
+  getAll: demoProcedure
     .input(
       z.object({
         status: actionStatusEnum.optional(),
@@ -51,7 +51,7 @@ export const actionsRouter = router({
     }),
 
   // Get pending actions (approval queue)
-  getPending: protectedProcedure.query(async () => {
+  getPending: demoProcedure.query(async () => {
     return [
       {
         id: "action_pending_1",
@@ -67,7 +67,7 @@ export const actionsRouter = router({
   }),
 
   // Get action by ID
-  getById: protectedProcedure
+  getById: demoProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input }) => {
       return {
@@ -84,7 +84,7 @@ export const actionsRouter = router({
     }),
 
   // Approve action
-  approve: protectedProcedure
+  approve: demoProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       return {
@@ -95,7 +95,7 @@ export const actionsRouter = router({
     }),
 
   // Reject action
-  reject: protectedProcedure
+  reject: demoProcedure
     .input(z.object({ id: z.string(), reason: z.string().optional() }))
     .mutation(async ({ input }) => {
       return {
@@ -107,7 +107,7 @@ export const actionsRouter = router({
     }),
 
   // Get action statistics
-  getStats: protectedProcedure.query(async () => {
+  getStats: demoProcedure.query(async () => {
     return {
       pending: 5,
       approved: 12,

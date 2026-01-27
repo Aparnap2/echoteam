@@ -1,6 +1,6 @@
 // Clone router for managing clone configurations
 import { z } from "zod";
-import { router, protectedProcedure } from "../trpc";
+import { router, demoProcedure } from "../trpc";
 
 const cloneTypeEnum = z.enum(["CALENDAR", "EMAIL", "OPS"]);
 
@@ -14,7 +14,7 @@ const cloneConfigSchema = z.object({
 
 export const clonesRouter = router({
   // Get all clones for user
-  getAll: protectedProcedure.query(async () => {
+  getAll: demoProcedure.query(async () => {
     // Return mock data for now
     return [
       {
@@ -42,7 +42,7 @@ export const clonesRouter = router({
   }),
 
   // Get single clone by ID
-  getById: protectedProcedure
+  getById: demoProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input }) => {
       return {
@@ -55,7 +55,7 @@ export const clonesRouter = router({
     }),
 
   // Create new clone
-  create: protectedProcedure
+  create: demoProcedure
     .input(
       z.object({
         type: cloneTypeEnum,
@@ -74,7 +74,7 @@ export const clonesRouter = router({
     }),
 
   // Update clone
-  update: protectedProcedure
+  update: demoProcedure
     .input(
       z.object({
         id: z.string(),
@@ -94,14 +94,14 @@ export const clonesRouter = router({
     }),
 
   // Delete clone
-  delete: protectedProcedure
+  delete: demoProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
       return { success: true, id: input.id };
     }),
 
   // Toggle clone enabled status
-  toggle: protectedProcedure
+  toggle: demoProcedure
     .input(z.object({ id: z.string(), enabled: z.boolean() }))
     .mutation(async ({ input }) => {
       return { success: true, id: input.id, enabled: input.enabled };

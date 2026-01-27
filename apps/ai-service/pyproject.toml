@@ -8,12 +8,14 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
     "langgraph>=1.0.0",
     "langchain-core>=0.3.0",
-    "graphiti-core[falkordb]>=0.2.0",
     "openai>=1.55.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.28.0",
+    # Memory layer - Graphiti with Neo4j
+    "graphiti-core[neo4j]>=0.2.0",
+    "neo4j>=5.20.0",
 ]
 
 [project.optional-dependencies]
