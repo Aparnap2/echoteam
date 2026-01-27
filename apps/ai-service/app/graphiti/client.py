@@ -33,6 +33,32 @@ class EpisodeSource(str, Enum):
     SYSTEM = "system"
 
 
+def _convert_to_episode_source(source_value: Optional[str]) -> EpisodeSource:
+    """Convert a raw source value to EpisodeSource enum.
+
+    Args:
+        source_value: Raw source string from Graphiti episode
+
+    Returns:
+        EpisodeSource enum value, defaults to SYSTEM if invalid/missing
+    """
+    if not source_value:
+        return EpisodeSource.SYSTEM
+    try:
+        # Handle Graphiti's EpisodeType format (e.g., "message" -> "user_interaction")
+        # Map common Graphiti source types to our EpisodeSource
+        source_mapping = {
+            "message": EpisodeSource.USER_INTERACTION,
+            "json": EpisodeSource.RESEARCH,
+            "text": EpisodeSource.NOTE,
+        }
+        if source_value in source_mapping:
+            return source_mapping[source_value]
+        return EpisodeSource(source_value)
+    except ValueError:
+        return EpisodeSource.SYSTEM
+
+
 class Episode(BaseModel):
     """Represents an episode (temporal memory) in the graph."""
     id: str = Field(description="Unique episode identifier")
@@ -395,8 +421,8 @@ class GraphitiClient:
                 id=str(ep.uuid),
                 name=ep.name or "Unknown",
                 content=ep.content[:500] if ep.content else "",
-                source=EpisodeSource.SYSTEM,
-                source_description="",
+                source=_convert_to_episode_source(getattr(ep, 'source', None)),
+                source_description=getattr(ep, 'source_description', "") or "",
                 group_id=group_id,
                 created_at=ep.created_at or start_time,
                 valid_at=ep.valid_at or start_time,

@@ -733,7 +733,7 @@ function QuickActions() {
   );
 }
 
-function OnboardingView() {
+function OnboardingView({ onExit }: { onExit: () => void }) {
   const [step, setStep] = useState(1);
   const [connectedTools, setConnectedTools] = useState<string[]>([]);
 
@@ -774,10 +774,12 @@ function OnboardingView() {
               <p>Select the tools you want EchoTeam to access. We'll sync your data to build your personal context graph.</p>
               <div className="tools-list">
                 {tools.map(tool => (
-                  <div
+                  <button
                     key={tool.id}
+                    type="button"
                     className={`tool-item ${connectedTools.includes(tool.id) ? "connected" : ""}`}
                     onClick={() => toggleTool(tool.id)}
+                    aria-pressed={connectedTools.includes(tool.id)}
                   >
                     <div className="tool-info">
                       <h3>{tool.name}</h3>
@@ -786,7 +788,7 @@ function OnboardingView() {
                     <div className={`tool-status ${connectedTools.includes(tool.id) ? "connected" : ""}`}>
                       {connectedTools.includes(tool.id) ? "Connected" : "Not connected"}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
               <button
@@ -892,7 +894,7 @@ function OnboardingView() {
               <p>Click below to see your clones in action</p>
             </div>
             <QuickActions />
-            <button className="btn btn-secondary" onClick={() => setStep(1)}>
+            <button className="btn btn-secondary" onClick={onExit}>
               Back to Dashboard
             </button>
           </>
@@ -1063,7 +1065,9 @@ function App() {
 
           {/* Main Content */}
           <main className="main-content">
-            {currentView === "onboarding" && <OnboardingView />}
+            {currentView === "onboarding" && (
+              <OnboardingView onExit={() => setCurrentView("dashboard")} />
+            )}
             {currentView === "dashboard" && <DashboardView />}
             {currentView === "clones" && <ClonesView />}
             {currentView === "actions" && <ActionsView />}

@@ -743,5 +743,129 @@ class TestCloneTypeMapping:
         assert CloneType.CALENDAR.value == "calendar"
 
 
+class TestHumanApprovalNode:
+    """Tests for human_approval_node HITL functionality.
+
+    These tests verify that:
+    1. interrupt() is called and its return value is captured
+    2. Command with goto='execute_approved' is returned when approved=True
+    3. Command with goto='task_complete' is returned when approved=False
+    """
+
+    @pytest.fixture
+    def sample_state(self):
+        """Create a sample state with a task requiring approval."""
+        task = Task(
+            id="task-approval-test",
+            task_type=TaskType.EMAIL_TRIAGE,
+            description="Review and triage emails",
+            confidence=0.75,
+        )
+        state: AgentState = {
+            "user_id": "user-123",
+            "group_id": "group-123",
+            "messages": [],
+            "tasks": [task],
+            "current_task": task,
+            "admin_output": {"type": "email_triage", "emails_reviewed": 5},
+            "ops_output": None,
+            "research_output": None,
+            "founder_context": {},
+            "suggestions": [],
+            "next_action": "",
+            "human_feedback": None,
+            "completed_actions": [],
+            "action_log": [],
+        }
+        return state
+
+    def test_human_approval_node_returns_command_when_approved(self, sample_state):
+        """Test that human_approval_node returns Command(goto='execute_approved') when approved."""
+        from app.agents.supervisor import human_approval_node
+        from langgraph.types import Command
+
+        # Mock interrupt to return True (approved)
+        with patch("app.agents.supervisor.interrupt") as mock_interrupt:
+            mock_interrupt.return_value = True
+
+            result = human_approval_node(sample_state)
+
+            # Verify interrupt was called with approval request
+            mock_interrupt.assert_called_once()
+            call_args = mock_interrupt.call_args[0][0]
+            assert call_args["type"] == "approval_request"
+            assert call_args["task_id"] == "task-approval-test"
+
+            # Verify Command is returned with correct goto
+            assert isinstance(result, Command)
+            assert result.goto == "execute_approved"
+
+    def test_human_approval_node_returns_command_when_rejected(self, sample_state):
+        """Test that human_approval_node returns Command(goto='task_complete') when rejected."""
+        from app.agents.supervisor import human_approval_node
+        from langgraph.types import Command
+
+        # Mock interrupt to return False (rejected)
+        with patch("app.agents.supervisor.interrupt") as mock_interrupt:
+            mock_interrupt.return_value = False
+
+            result = human_approval_node(sample_state)
+
+            # Verify interrupt was called
+            mock_interrupt.assert_called_once()
+
+            # Verify Command is returned with goto='task_complete'
+            assert isinstance(result, Command)
+            assert result.goto == "task_complete"
+
+    def test_human_approval_node_includes_task_info_in_interrupt(self, sample_state):
+        """Test that interrupt includes all relevant task information."""
+        from app.agents.supervisor import human_approval_node
+
+        with patch("app.agents.supervisor.interrupt") as mock_interrupt:
+            mock_interrupt.return_value = True
+
+            human_approval_node(sample_state)
+
+            # Verify interrupt was called with complete task info
+            call_args = mock_interrupt.call_args[0][0]
+            assert call_args["task_id"] == "task-approval-test"
+            assert call_args["task_type"] == "email_triage"
+            assert call_args["description"] == "Review and triage emails"
+            assert call_args["output"]["type"] == "email_triage"
+            assert "question" in call_args
+
+    def test_human_approval_node_handles_none_task(self):
+        """Test that human_approval_node handles state with no current_task."""
+        from app.agents.supervisor import human_approval_node
+        from langgraph.types import Command
+
+        state: AgentState = {
+            "user_id": "user-123",
+            "group_id": "group-123",
+            "messages": [],
+            "tasks": [],
+            "current_task": None,
+            "admin_output": None,
+            "ops_output": None,
+            "research_output": None,
+            "founder_context": {},
+            "suggestions": [],
+            "next_action": "",
+            "human_feedback": None,
+            "completed_actions": [],
+            "action_log": [],
+        }
+
+        with patch("app.agents.supervisor.interrupt") as mock_interrupt:
+            mock_interrupt.return_value = True
+
+            result = human_approval_node(state)
+
+            # Should still return a valid Command even with no task
+            assert isinstance(result, Command)
+            mock_interrupt.assert_called_once()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

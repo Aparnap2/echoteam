@@ -526,21 +526,21 @@ def human_approval_node(state: AgentState) -> Command:
     """Interrupt for human approval.
 
     This node uses LangGraph's interrupt() to pause execution
-    and wait for human feedback.
+    and wait for human feedback. The resume value determines the next node.
 
     Args:
         state: Current agent state
 
     Returns:
-        Command with interrupt for human input
+        Command routing to execute_approved or task_complete based on approval
     """
     task = state.get("current_task")
     output = state.get("admin_output") or state.get("ops_output") or state.get("research_output")
 
     logger.info(f"Requesting human approval for task: {task.id if task else 'unknown'}")
 
-    # Interrupt and ask for human input
-    interrupt({
+    # Interrupt and ask for human input, capture the resume value
+    approved = interrupt({
         "type": "approval_request",
         "task_id": task.id if task else None,
         "task_type": task.task_type.value if task else None,
@@ -548,6 +548,14 @@ def human_approval_node(state: AgentState) -> Command:
         "output": output,
         "question": "Do you approve this action?",
     })
+
+    # Route based on human approval
+    if approved:
+        logger.info(f"Task {task.id if task else 'unknown'} approved, proceeding to execution")
+        return Command(goto="execute_approved")
+    else:
+        logger.info(f"Task {task.id if task else 'unknown'} rejected, skipping to task_complete")
+        return Command(goto="task_complete")
 
 
 def execute_approved(state: AgentState) -> dict:
