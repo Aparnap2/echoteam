@@ -43,7 +43,7 @@ from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.runnables import Runnable
 
 from app.agents.base import CloneType, ActionStatus, CloneAction
-from app.graphiti.client import GraphitiClient, EpisodeSource, get_graphiti_client
+from app.memory import QdrantMemory, get_memory, MemorySourceType
 
 logger = logging.getLogger(__name__)
 
@@ -155,16 +155,12 @@ async def admin_clone_node(state: AgentState) -> dict:
     logger.info(f"Admin Clone processing task: {task.task_type if task else 'none'}")
 
     try:
-        # Get context from Graphiti
-        graphiti = await get_graphiti_client()
+        # Get context from memory
+        memory = await get_memory(user_id=user_id)
 
         # Retrieve relevant context
-        context = await graphiti.get_user_context(
-            group_id=state.get("group_id", user_id),
+        context = await memory.get_user_context(
             query=f"email and calendar context for {task.description if task else 'daily digest'}",
-            include_email_history=True,
-            include_calendar=True,
-            days_back=30,
         )
 
         # Process based on task type
@@ -230,15 +226,11 @@ async def ops_clone_node(state: AgentState) -> dict:
     logger.info(f"Ops Clone processing task: {task.task_type if task else 'none'}")
 
     try:
-        # Get context from Graphiti
-        graphiti = await get_graphiti_client()
+        # Get context from memory
+        memory = await get_memory(user_id=user_id)
 
-        context = await graphiti.get_user_context(
-            group_id=state.get("group_id", user_id),
+        context = await memory.get_user_context(
             query=f"tasks and workflow context for {task.description if task else 'weekly review'}",
-            include_tasks=True,
-            include_notes=True,
-            days_back=14,
         )
 
         if task and task.task_type in [TaskType.TASK_CREATE, TaskType.TASK_UPDATE]:
@@ -294,15 +286,11 @@ async def research_clone_node(state: AgentState) -> dict:
     logger.info(f"Research Clone processing task: {task.task_type if task else 'none'}")
 
     try:
-        # Get context from Graphiti
-        graphiti = await get_graphiti_client()
+        # Get context from memory
+        memory = await get_memory(user_id=user_id)
 
-        context = await graphiti.get_user_context(
-            group_id=state.get("group_id", user_id),
+        context = await memory.get_user_context(
             query=f"research and insights for {task.description if task else 'trend analysis'}",
-            include_notes=True,
-            include_research=True if False else True,  # RESEARCH source exists
-            days_back=30,
         )
 
         if task and task.task_type in [TaskType.RESEARCH_QUERY, TaskType.RESEARCH_SUMMARY]:

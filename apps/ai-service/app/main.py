@@ -5,20 +5,24 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import httpx
+import icecream
 from app.config import settings
-from app.graphiti.client import GraphitiClient, EpisodeSource
+from app.memory import QdrantMemory, MemoryConfig, get_memory
 from app.agents import CalendarClone, EmailClone, OpsClone, CloneType
 
 
-# Global clients
-graphiti_client: Optional[GraphitiClient] = None
+# Configure icecream for debugging
+icecream.install()
+
+# Global memory instance
+memory: Optional[QdrantMemory] = None
 ollama_healthy: bool = False
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
-    global graphiti_client, ollama_healthy
+    global memory, ollama_healthy
 
     # Check Ollama health
     try:
@@ -28,14 +32,16 @@ async def lifespan(app: FastAPI):
     except Exception:
         ollama_healthy = False
 
-    graphiti_client = GraphitiClient()
-    await graphiti_client.initialize()
-    print(f"Started {settings.app_name} v{settings.app_version}")
-    print(f"Ollama: {'healthy' if ollama_healthy else 'unhealthy'}")
+    # Initialize memory
+    config = MemoryConfig.from_env()
+    memory = await get_memory(user_id="default", config=config)
+    icecream.ic(f"Started {settings.app_name} v{settings.app_version}")
+    icecream.ic(f"Ollama: {'healthy' if ollama_healthy else 'unhealthy'}")
+    icecream.ic(f"Qdrant: {'connected' if memory.is_initialized else 'disconnected'}")
     yield
-    if graphiti_client:
-        await graphiti_client.close()
-    print("Shutting down AI service")
+    if memory:
+        await memory.close()
+    icecream.ic("Shutting down AI service")
 
 
 app = FastAPI(
@@ -98,7 +104,7 @@ async def health_check() -> HealthResponse:
         version=settings.app_version,
         services={
             "ollama": ollama_healthy,
-            "falkordb": graphiti_client.is_initialized if graphiti_client else False
+            "qdrant": memory.is_initialized if memory else False
         }
     )
 
@@ -273,43 +279,42 @@ async def process_clone(request: CloneProcessRequest) -> CloneProcessResponse:
 
 @app.post("/api/memory/search")
 async def search_memory(query: str, num_results: int = 5):
-    """Search the temporal knowledge graph."""
-    if not graphiti_client:
-        raise HTTPException(status_code=503, detail="Graphiti client not initialized")
+    """Search the memory store using hybrid vector search."""
+    if not memory:
+        raise HTTPException(status_code=503, detail="Memory not initialized")
 
-    results = await graphiti_client.search(query, num_results=num_results)
+    results = await memory.search(query=query, max_results=num_results)
     return {"results": [r.model_dump() for r in results]}
 
 
 @app.post("/api/memory/episode")
 async def add_episode(
-    name: str,
     content: str,
-    source: str = "echo_team",
-    group_id: str = "default",
+    source: str = "user_interaction",
+    metadata: Optional[dict] = None,
 ):
-    """Add an episode to the temporal knowledge graph."""
-    if not graphiti_client:
-        raise HTTPException(status_code=503, detail="Graphiti client not initialized")
+    """Add an episode to the memory store."""
+    if not memory:
+        raise HTTPException(status_code=503, detail="Memory not initialized")
 
-    # Convert source string to EpisodeSource enum
+    # Map source string to MemorySourceType
+    from app.memory import MemorySourceType
     source_enum_map = {
-        "email": EpisodeSource.EMAIL,
-        "calendar": EpisodeSource.CALENDAR,
-        "task": EpisodeSource.TASK,
-        "note": EpisodeSource.NOTE,
-        "research": EpisodeSource.RESEARCH,
-        "echo_team": EpisodeSource.USER_INTERACTION,
+        "email": MemorySourceType.EMAIL,
+        "calendar": MemorySourceType.CALENDAR,
+        "task": MemorySourceType.TASK,
+        "note": MemorySourceType.NOTE,
+        "research": MemorySourceType.RESEARCH,
+        "user_interaction": MemorySourceType.USER_INTERACTION,
+        "system": MemorySourceType.SYSTEM,
     }
-    source_enum = source_enum_map.get(source.lower(), EpisodeSource.USER_INTERACTION)
+    source_type = source_enum_map.get(source.lower(), MemorySourceType.USER_INTERACTION)
 
-    episode = await graphiti_client.add_episode(
-        name=name,
+    result = await memory.add(
         content=content,
-        source=source_enum,
-        group_id=group_id,
+        metadata={"source": source_type.value, **(metadata or {})},
     )
-    return {"episode_id": episode.id}
+    return {"status": result.status.value, "message": result.message}
 
 
 if __name__ == "__main__":
