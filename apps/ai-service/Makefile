@@ -12,12 +12,12 @@
 
 # Colors for output
 RED = \033[0;31m
-GREEN = \033[0;32m \033[1
-YELLOW =;33m
+GREEN = \033[0;32m
+YELLOW = \033[0;33m
 NC = \033[0m # No Color
 
-# Services to manage
-SERVICES = qdrant ollama
+# Services to manage (match actual container names)
+SERVICES = echoteam-qdrant echoteam-ollama
 AI_SERVICE = ai-service
 
 help:
@@ -118,7 +118,7 @@ run:
 
 consumer:
 	@echo "$(GREEN)Starting Chat Processor Consumer...$(NC)"
-	@source .venv/bin/activate && python -c "from app.consumers import get_chat_processor; import asyncio; asyncio.run(get_chat_processor())"
+	@source .venv/bin/activate && python app/cli/consumer_entrypoint.py
 
 # Docker convenience commands
 docker-qdrant:

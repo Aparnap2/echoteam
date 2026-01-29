@@ -314,6 +314,7 @@ class RedpandaEvents:
         if not self._initialized:
             await self.initialize()
 
+        consumer = None
         try:
             from aiokafka import AIOKafkaConsumer
 
@@ -339,6 +340,10 @@ class RedpandaEvents:
             raise ImportError(
                 "aiokafka not installed. Install with: pip install aiokafka"
             ) from e
+        finally:
+            if consumer is not None:
+                await consumer.stop()
+                logger.debug("Consumer stopped")
 
     async def consume_actions(
         self,

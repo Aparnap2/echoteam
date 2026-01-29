@@ -71,11 +71,24 @@ class ChatProcessorConfig:
         CHAT_EVENTS_TOPIC: Topic to consume (default: chat.events)
         RAG_CONFIDENCE_THRESHOLD: Min confidence to reply (default: 0.8)
         LANGFUSE_ENABLED: Enable tracing (default: True)
+        LANGFUSE_HOST: Langfuse server URL (default: http://localhost:3100)
     """
     chat_events_topic: str = "chat.events"
     rag_confidence_threshold: float = 0.8
     langfuse_enabled: bool = True
     langfuse_host: str = "http://localhost:3100"
+
+    @classmethod
+    def from_env(cls) -> "ChatProcessorConfig":
+        """Create config from environment variables."""
+        import os
+
+        return cls(
+            chat_events_topic=os.getenv("CHAT_EVENTS_TOPIC", "chat.events"),
+            rag_confidence_threshold=float(os.getenv("RAG_CONFIDENCE_THRESHOLD", "0.8")),
+            langfuse_enabled=os.getenv("LANGFUSE_ENABLED", "true").lower() == "true",
+            langfuse_host=os.getenv("LANGFUSE_HOST", "http://localhost:3100"),
+        )
 
 
 class ChatProcessor:
@@ -218,7 +231,7 @@ class ChatProcessor:
 
         try:
             # Step 1: Generate embedding and search Qdrant
-            with await self._span("search_qdrant"):
+            async with await self._span("search_qdrant", trace_id):
                 results = await self._memory.search(
                     query=message.content,
                     max_results=5,
@@ -239,7 +252,7 @@ class ChatProcessor:
 
             # Step 3: Generate reply if confident
             if should_reply:
-                with await self._span("generate_reply"):
+                async with await self._span("generate_reply", trace_id):
                     result.reply_content = await self._generate_reply(
                         message, results[0]
                     )
@@ -342,16 +355,17 @@ class ChatProcessor:
 
         return trace_id
 
-    async def _span(self, name: str) -> "Span":
+    async def _span(self, name: str, trace_id: str) -> "Span":
         """Create a Langfuse span.
 
         Args:
             name: Span name
+            trace_id: Trace ID to associate with this span
 
         Returns:
             Span context manager
         """
-        return Span(name, self.config, self._trace_id)
+        return Span(name, self.config, trace_id)
 
     async def _end_trace(
         self, trace_id: str, result: Optional[RAGResult], error: Optional[str] = None
@@ -392,14 +406,18 @@ class Span:
         self.config = config
         self.trace_id = trace_id
         self.start_time = None
+        self.start_time_iso = None
 
     async def __aenter__(self):
+        """Capture start time on entry."""
         import time
 
         self.start_time = time.time()
+        self.start_time_iso = datetime.now(timezone.utc).isoformat()
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Send span to Langfuse on exit."""
         import time
 
         duration_ms = (time.time() - self.start_time) * 1000
@@ -413,14 +431,17 @@ class Span:
                             "traceId": self.trace_id,
                             "id": str(uuid4()),
                             "name": self.name,
-                            "startTime": datetime.now(timezone.utc).isoformat(),
+                            "startTime": self.start_time_iso,
                             "endTime": datetime.now(timezone.utc).isoformat(),
                             "duration": duration_ms,
                         },
                         timeout=5.0,
                     )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(
+                    f"Failed to send span to Langfuse: {e} "
+                    f"(trace_id={self.trace_id}, name={self.name})"
+                )
 
 
 # Convenience function

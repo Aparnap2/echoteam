@@ -18,9 +18,11 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 
-# Set environment variables for testing
-os.environ["REDPANDA_URL"] = "localhost:9092"
-os.environ["CONSUMER_GROUP"] = "echoteam-workers-test"
+@pytest.fixture
+def redpanda_env(monkeypatch):
+    """Set environment variables for Redpanda testing."""
+    monkeypatch.setenv("REDPANDA_URL", "localhost:9092")
+    monkeypatch.setenv("CONSUMER_GROUP", "echoteam-workers-test")
 
 
 class TestEventsConfig:
@@ -213,13 +215,14 @@ class TestRedpandaEventsWithMocks:
             assert result is True
 
 
+@pytest.mark.integration
 class TestRedpandaEventsIntegration:
     """Integration tests for RedpandaEvents - requires real Redpanda instance."""
 
     TEST_USER_ID = "integration_test_user"
 
     @pytest_asyncio.fixture
-    async def events(self):
+    async def events(self, redpanda_env):
         """Create events instance for integration testing."""
         from app.events.redpanda import RedpandaEvents, EventsConfig
 
@@ -240,10 +243,8 @@ class TestRedpandaEventsIntegration:
         assert events.is_initialized is True
 
     @pytest.mark.asyncio
-    async def test_publish_and_receive_action(self, events):
-        """Test publishing and receiving an action event."""
-        from app.events.redpanda import EventType
-
+    async def test_publish_action(self, events):
+        """Test publishing an action event."""
         # Publish an action
         result = await events.publish_action(
             action={"type": "test_action", "data": "test_data"},

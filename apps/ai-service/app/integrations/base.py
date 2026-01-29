@@ -178,7 +178,7 @@ class BaseIntegration(ABC):
         from app.memory import get_memory, MemorySourceType
 
         try:
-            memory = await get_memory(user_id=self.config.group_id)
+            memory = await get_memory(user_id=self.config.user_id)
 
             # Map source_type to MemorySourceType enum
             source_map = {

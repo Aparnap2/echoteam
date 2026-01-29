@@ -138,11 +138,11 @@ class TestUserContext:
 
     def test_user_context_creation(self):
         """Test creating a user context."""
-        from app.memory.qdrant import UserContext, SearchResult
+        from app.memory.qdrant import UserContext, SearchResult, MemorySourceType
 
         results = [
-            SearchResult(id="1", content="Email about project", source="email"),
-            SearchResult(id="2", content="Meeting scheduled", source="calendar"),
+            SearchResult(id="1", content="Email about project", source=MemorySourceType.EMAIL),
+            SearchResult(id="2", content="Meeting scheduled", source=MemorySourceType.CALENDAR),
         ]
 
         context = UserContext(
@@ -306,7 +306,7 @@ class TestQdrantMemoryIntegration:
 
         # Search for it
         results = await memory.search(query="meeting client 3pm")
-        assert len(results) >= 0  # May be empty if indexing not complete
+        assert isinstance(results, list)  # Verify search returns a list
 
     @pytest.mark.asyncio
     async def test_get_user_context(self, memory):

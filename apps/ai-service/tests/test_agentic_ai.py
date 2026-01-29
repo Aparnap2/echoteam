@@ -817,7 +817,18 @@ class TestFullAgentIntegration:
 
         config = MemoryConfig.from_env()
         memory = QdrantMemory(user_id="agent-integration-test", config=config)
-        await memory.initialize()
+
+        # Skip if Qdrant is not available
+        try:
+            await memory.initialize()
+        except Exception as e:
+            await memory.close()
+            pytest.skip(f"Qdrant not available: {e}")
+
+        # Verify initialization worked
+        if not memory.is_initialized:
+            await memory.close()
+            pytest.skip("Qdrant initialization failed")
 
         # Add context
         await memory.add(
@@ -830,7 +841,10 @@ class TestFullAgentIntegration:
 
         await memory.close()
 
-        assert memory.is_initialized or True
+        # Verify initialization and context retrieval worked
+        assert memory.is_initialized
+        assert context is not None
+        assert isinstance(context.context_text, str)
 
     def test_structured_output_with_agent(self):
         """Test agent producing structured outputs."""

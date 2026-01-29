@@ -159,13 +159,16 @@ class MemoryConfig:
     @classmethod
     def from_env(cls) -> "MemoryConfig":
         """Create config from environment variables."""
+        import os
+
         return cls(
-            qdrant_url="http://localhost:6333",
-            qdrant_api_key=None,
-            embedding_model="nomic-embed-text:v1.5",
-            embedding_endpoint="http://localhost:11434/api/embed",
-            embedding_dimensions=768,
-            max_results=20,
+            qdrant_url=os.getenv("QDRANT_URL", "http://localhost:6333"),
+            qdrant_api_key=os.getenv("QDRANT_API_KEY"),
+            embedding_model=os.getenv("EMBEDDING_MODEL", "nomic-embed-text:v1.5"),
+            embedding_endpoint=os.getenv("EMBEDDING_ENDPOINT", "http://localhost:11434/api/embed"),
+            embedding_dimensions=int(os.getenv("EMBEDDING_DIMENSIONS", "768")),
+            max_results=int(os.getenv("MAX_RESULTS", "20")),
+            collection_name=os.getenv("COLLECTION_NAME", "echoteam_memory"),
         )
 
     def validate(self) -> None:
@@ -276,11 +279,18 @@ class QdrantMemory:
     async def _generate_sparse_vector(self, text: str) -> dict:
         """Generate sparse representation for text.
 
-        Note: Full BM25 sparse vectors require Qdrant Cloud.
-        This is a placeholder for future sparse search support.
+        Simple term frequency-based sparse vector for keyword matching.
+        Full BM25 sparse vectors require Qdrant Cloud.
         """
-        # Simple term frequency as placeholder
-        return {}
+        # Tokenize and count terms
+        tokens = text.lower().split()
+        term_freq = {}
+        for token in tokens:
+            # Simple filtering - keep alphanumeric tokens > 2 chars
+            clean_token = ''.join(c for c in token if c.isalnum())
+            if len(clean_token) > 2:
+                term_freq[clean_token] = term_freq.get(clean_token, 0) + 1
+        return term_freq
 
     async def initialize(self) -> None:
         """Initialize the memory layer and connect to Qdrant."""
@@ -410,15 +420,16 @@ class QdrantMemory:
             query_vector = await self._generate_embedding(query)
 
             # Build filter if source specified
-            from qdrant_client.models import Filter, FieldCondition, MatchValue
+            from qdrant_client.models import Filter, FieldCondition, MatchAny
 
             filter_obj = None
             if source_filter:
+                # Use MatchAny to match any of the provided source types
                 filter_obj = Filter(
                     must=[
                         FieldCondition(
                             key="source",
-                            match=MatchValue(value=source_filter[0].value),
+                            match=MatchAny(values=[s.value for s in source_filter]),
                         )
                     ]
                 )

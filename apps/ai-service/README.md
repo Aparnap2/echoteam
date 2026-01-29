@@ -36,7 +36,7 @@
 
 ### Memory Layer: Qdrant
 - **Qdrant (1.12.0)**: Hybrid vector search (dense + sparse/BM25)
-- **Ollama**: Local LLM provider (granite3.1-moe:3b, nomic-embed-text)
+- **Ollama**: Local LLM provider (granite3.1-moe:3b, nomic-embed-text:v1.5)
 - Simpler setup, no schema initialization, lower resource footprint
 
 ### Event Streaming: Redpanda
@@ -67,7 +67,7 @@ make test
 make consumer
 ```
 
-## Test Suite (66 passing)
+## Test Suite (70 passing)
 
 | Category | Tests | Description |
 |----------|-------|-------------|
