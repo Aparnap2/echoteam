@@ -64,6 +64,9 @@ class CalendarIntegration(BaseIntegration):
         """
         result = SyncResult(success=True)
 
+        # Clear cache at start of sync to avoid duplicates
+        self._events_cache.clear()
+
         # Stub: Would fetch events from Calendar API
         # In production:
         #   events = self._client.events().list(

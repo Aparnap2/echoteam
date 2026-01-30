@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = None
     openai_model: str = "gpt-3.5-turbo"
 
-    # Langfuse Observability
-    langfuse_enabled: bool = True
+    # Langfuse Observability (disabled by default until keys are provided)
+    langfuse_enabled: bool = False
     langfuse_host: str = "https://cloud.langfuse.com"
     langfuse_public_key: Optional[str] = None
     langfuse_secret_key: Optional[str] = None

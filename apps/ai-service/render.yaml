@@ -17,7 +17,7 @@ services:
     name: echoteam-api
     env: python
     repo: https://github.com/Aparnap2/echoteam
-    branch: feat/comprehensive-agentic-tests
+    branch: main
     path: apps/ai-service
     pythonVersion: "3.11"
     buildCommand: "pip install -e ."

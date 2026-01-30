@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 import httpx
 import icecream
 from app.config import settings
-from app.memory import QdrantMemory, MemoryConfig, get_memory
+from app.memory import QdrantMemory, MemoryConfig, get_memory, MemorySourceType
 from app.agents import CalendarClone, EmailClone, OpsClone, CloneType
 
 
@@ -17,6 +17,17 @@ icecream.install()
 # Global memory instance
 memory: Optional[QdrantMemory] = None
 ollama_healthy: bool = False
+
+# Source type mapping (module-level to avoid recreation on each request)
+SOURCE_ENUM_MAP = {
+    "email": MemorySourceType.EMAIL,
+    "calendar": MemorySourceType.CALENDAR,
+    "task": MemorySourceType.TASK,
+    "note": MemorySourceType.NOTE,
+    "research": MemorySourceType.RESEARCH,
+    "user_interaction": MemorySourceType.USER_INTERACTION,
+    "system": MemorySourceType.SYSTEM,
+}
 
 
 @asynccontextmanager
@@ -298,21 +309,14 @@ async def add_episode(
         raise HTTPException(status_code=503, detail="Memory not initialized")
 
     # Map source string to MemorySourceType
-    from app.memory import MemorySourceType
-    source_enum_map = {
-        "email": MemorySourceType.EMAIL,
-        "calendar": MemorySourceType.CALENDAR,
-        "task": MemorySourceType.TASK,
-        "note": MemorySourceType.NOTE,
-        "research": MemorySourceType.RESEARCH,
-        "user_interaction": MemorySourceType.USER_INTERACTION,
-        "system": MemorySourceType.SYSTEM,
-    }
-    source_type = source_enum_map.get(source.lower(), MemorySourceType.USER_INTERACTION)
+    source_type = SOURCE_ENUM_MAP.get(source.lower(), MemorySourceType.USER_INTERACTION)
+
+    # Merge metadata, ensuring computed source is authoritative (source last wins)
+    merged_metadata = {**(metadata or {}), "source": source_type.value}
 
     result = await memory.add(
         content=content,
-        metadata={"source": source_type.value, **(metadata or {})},
+        metadata=merged_metadata,
     )
     return {"status": result.status.value, "message": result.message}
 

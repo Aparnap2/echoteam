@@ -165,12 +165,8 @@ async def ingest_data():
         for conv in SAMPLE_CONVERSATIONS:
             print(f"Adding: {conv['content'][:50]}...")
 
-            # Generate embedding
-            embedding = await generate_embedding(
-                conv["content"],
-                f"{ollama_base_url}/api/embed",
-                embedding_model
-            )
+            # Note: QdrantMemory.add() generates embeddings internally
+            # so we don't need to pre-compute them here
 
             # Add to memory
             result = await memory.add(
