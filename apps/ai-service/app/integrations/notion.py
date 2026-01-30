@@ -28,8 +28,10 @@ class NotionIntegration(BaseIntegration):
     """
 
     SERVICE_NAME = "notion"
+    # Notion OAuth scopes - see https://developers.notion.com/reference/scopes
     DEFAULT_SCOPES = [
-        "authorization_code",  # Notion uses auth code flow
+        # TODO: Add actual Notion scopes for production:
+        # "read_content", "read_userinfo", "read_database_content", etc.
     ]
 
     def __init__(self, user_id: str, group_id: str):

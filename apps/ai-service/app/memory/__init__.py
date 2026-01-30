@@ -1,14 +1,14 @@
-"""EchoTeam Memory Layer.
+"""EchoTeam Memory Layer - Qdrant Hybrid Search
 
-This module provides the Graphiti-based memory system for persistent,
-temporal knowledge graph storage with Neo4j backend.
+This module provides the Qdrant-based memory system for persistent,
+hybrid vector + keyword search.
 
 Modules:
-- graphiti: Graphiti integration with Neo4j
+- qdrant: Qdrant integration with hybrid search (Dense + Sparse)
 """
 
-from app.memory.graphiti import (
-    GraphitiMemory,
+from app.memory.qdrant import (
+    QdrantMemory,
     MemoryConfig,
     MemoryOperationResult,
     SearchResult,
@@ -21,7 +21,7 @@ from app.memory.graphiti import (
 )
 
 __all__ = [
-    "GraphitiMemory",
+    "QdrantMemory",
     "MemoryConfig",
     "MemoryOperationResult",
     "SearchResult",

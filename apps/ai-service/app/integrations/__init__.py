@@ -4,7 +4,6 @@ These modules provide OAuth-based connections to:
 - Gmail (email ingestion)
 - Google Calendar (calendar events)
 - Notion (tasks and notes)
-- Google Drive (files)
 
 Currently stubs - full implementation requires OAuth credentials.
 """

@@ -1,0 +1,45 @@
+# EchoTeam AI Service - Render Deployment Configuration
+#
+# Deploy to Render: https://dashboard.render.com/blueprints/new?repo=https://github.com/Aparnap2/echoteam
+#
+# Or use the render CLI:
+#   render blueprint render.yaml
+#
+# Important: Set the following environment variables in Render:
+#   - QDRANT_URL: Your Qdrant Cloud URL
+#   - QDRANT_API_KEY: Your Qdrant Cloud API Key
+#   - LANGFUSE_PUBLIC_KEY: Your Langfuse public key (optional)
+#   - LANGFUSE_SECRET_KEY: Your Langfuse secret key (optional)
+#   - OPENAI_API_KEY: For cloud LLM fallback (optional)
+
+services:
+  - type: web
+    name: echoteam-api
+    env: python
+    repo: https://github.com/Aparnap2/echoteam
+    branch: main
+    path: apps/ai-service
+    pythonVersion: "3.11"
+    buildCommand: "pip install -e ."
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port 10000"
+    healthCheckPath: /health
+    envVars:
+      - key: QDRANT_URL
+        fromService:
+          type: database
+          name: echoteam-qdrant
+          property: connectionString
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: LANGFUSE_PUBLIC_KEY
+        sync: false
+      - key: LANGFUSE_SECRET_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+databases:
+  - name: echoteam-qdrant
+    type: qdrant
+    plan: free
+    version: "1.12"

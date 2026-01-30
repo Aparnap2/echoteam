@@ -19,10 +19,29 @@ os.environ["EMBEDDING_MODEL"] = "nomic-embed-text:v1.5"
 os.environ["EMBEDDING_ENDPOINT"] = "http://localhost:11434/api/embed"
 os.environ["EMBEDDING_DIMENSIONS"] = "768"
 
+# Qdrant configuration
+os.environ["QDRANT_URL"] = "http://localhost:6333"
+
 import pytest
 import asyncio
 from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
+
+
+def pytest_configure(config):
+    """Configure pytest to skip integration tests by default."""
+    config.addinivalue_line(
+        "markers", "integration: mark test as integration test requiring external service"
+    )
+
+
+def pytest_collection_modifyitems(session, config, items):
+    """Skip integration tests unless --integration flag is provided."""
+    if not config.getoption("--integration", default=False):
+        skip_marker = pytest.mark.skip(reason="Run with --integration to execute")
+        for item in items:
+            if item.get_closest_marker("integration"):
+                item.add_marker(skip_marker)
 
 
 @pytest.fixture(scope="session")

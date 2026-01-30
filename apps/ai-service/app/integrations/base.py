@@ -166,7 +166,7 @@ class BaseIntegration(ABC):
 
     async def _create_episode(self, name: str, content: str,
                                source_type: str, metadata: Dict[str, Any]) -> bool:
-        """Create an episode in Graphiti for ingested data.
+        """Create an episode in memory for ingested data.
 
         Args:
             name: Episode name/identifier
@@ -175,29 +175,26 @@ class BaseIntegration(ABC):
             metadata: Additional metadata (subject, date, etc.)
         """
         # Import here to avoid circular imports
-        from app.graphiti.client import get_graphiti_client, EpisodeSource
+        from app.memory import get_memory, MemorySourceType
 
         try:
-            graphiti = await get_graphiti_client()
+            memory = await get_memory(user_id=self.config.user_id)
 
-            # Map source_type to EpisodeSource enum
+            # Map source_type to MemorySourceType enum
             source_map = {
-                "email": EpisodeSource.EMAIL,
-                "calendar": EpisodeSource.CALENDAR,
-                "task": EpisodeSource.TASK,
-                "note": EpisodeSource.NOTE,
-                "research": EpisodeSource.RESEARCH,
+                "email": MemorySourceType.EMAIL,
+                "calendar": MemorySourceType.CALENDAR,
+                "task": MemorySourceType.TASK,
+                "note": MemorySourceType.NOTE,
+                "research": MemorySourceType.RESEARCH,
             }
-            source = source_map.get(source_type, EpisodeSource.SYSTEM)
+            source = source_map.get(source_type, MemorySourceType.SYSTEM)
 
-            await graphiti.add_episode(
-                name=name,
+            result = await memory.add(
                 content=content,
-                source=source,
-                group_id=self.config.group_id,
-                metadata=metadata,
+                metadata={"source": source.value, "name": name, **metadata},
             )
-            return True
+            return result.status.value == "success"
         except Exception as e:
             logger.error(f"Failed to create episode: {e}")
             return False
