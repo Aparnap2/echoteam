@@ -12,19 +12,25 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
 
-    # Ollama Configuration
+    # Qdrant Cloud Configuration
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: Optional[str] = None
+
+    # Ollama Configuration (for local embedding generation)
     ollama_base_url: str = "http://localhost:11434"
     ollama_model_coding: str = "qwen2.5-coder:3b"
     ollama_model_reasoning: str = "granite3.1-moe:3b"
     ollama_model_embedding: str = "nomic-embed-text:v1.5"
 
-    # FalkorDB Configuration
-    falkor_host: str = "localhost"
-    falkor_port: int = 6379
-    falkor_database: str = "echoteam"
+    # OpenAI Configuration (for cloud LLM - fallback)
+    openai_api_key: Optional[str] = None
+    openai_model: str = "gpt-3.5-turbo"
 
-    # Graphiti Configuration
-    graphiti_host: str = "http://localhost:8080"
+    # Langfuse Observability
+    langfuse_enabled: bool = True
+    langfuse_host: str = "https://cloud.langfuse.com"
+    langfuse_public_key: Optional[str] = None
+    langfuse_secret_key: Optional[str] = None
 
     # HITL Configuration
     confidence_threshold: float = 0.85
